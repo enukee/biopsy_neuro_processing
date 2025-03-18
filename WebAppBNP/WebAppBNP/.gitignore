@@ -1,0 +1,27 @@
+# Build results
+[Oo]bj/
+[Bb]in/
+
+# User-specific files
+*.user
+*.userosx
+*.suo
+*.userprefs
+*.rsuser
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+
+# Secrets
+appsettings.Development.json
+secrets.json
+
+# IDE-specific files
+.vscode/
+*.csproj.user
+
+# Node modules
+node_modules/

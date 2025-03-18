@@ -1,0 +1,80 @@
+﻿@page "/processing"
+@rendermode InteractiveServer
+@inject HttpClient Http
+
+<PageTitle>Анализ изображений</PageTitle>
+
+<h1 class="welcome-title">Загрузите изображение</h1>
+<p class="intro-text">Загрузите изображение, и мы обработаем его для вас!</p>
+
+<InputFile OnChange="HandleFileSelected" accept="image/*" />
+
+@if (imageDataUrl != null)
+{
+    <button class="btn btn-primary" @onclick="ProcessImage">Обработать изображение</button>
+    <img src="@imageDataUrl" alt="Загруженное изображение" style="max-width: 100%; margin-top: 20px;" />
+}
+
+@if (processedImageDataUrl != null)
+{
+    <img src="@processedImageDataUrl" alt="Обработанное изображение" style="max-width: 100%; margin-top: 20px;" />
+}
+
+@code {
+    private IBrowserFile selectedFile;
+    private string imageDataUrl;
+    private string processedImageDataUrl;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        Console.WriteLine("uploading an image");
+
+        selectedFile = e.File;
+        var buffer = new byte[selectedFile.Size];
+        await selectedFile.OpenReadStream().ReadAsync(buffer);
+        imageDataUrl = $"data:{selectedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+
+        Console.WriteLine("Image data URL: " + imageDataUrl); // Add this line for debugging
+
+        // Обновляем интерфейс, чтобы отобразить загруженное изображение
+        StateHasChanged();
+        Console.WriteLine("State has changed called."); // Add this line for debugging
+    }
+
+
+    private async Task ProcessImage()
+    {
+        Console.WriteLine("image processing");
+
+        if (selectedFile != null)
+        {
+            await UploadFile(selectedFile);
+        }
+    }
+
+    private async Task UploadFile(IBrowserFile file)
+    {
+        var content = new MultipartFormDataContent();
+        var streamContent = new StreamContent(file.OpenReadStream());
+        content.Add(streamContent, "file", file.Name);
+
+        Console.WriteLine("Отправляем файл на сервер...");
+
+        var response = await Http.PostAsync("http://127.0.0.1:5000/proceed", content);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var processedImageBytes = await response.Content.ReadAsByteArrayAsync();
+            processedImageDataUrl = $"data:image/jpg;base64,{Convert.ToBase64String(processedImageBytes)}";
+            Console.WriteLine("Файл успешно загружен и обработан.");
+
+            // Обновляем интерфейс, чтобы отобразить обработанное изображение
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine($"Ошибка при загрузке файла: {response.StatusCode}");
+        }
+    }
+}
+
