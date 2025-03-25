@@ -44,26 +44,21 @@ def process_image(file_path):
         else:
             print("File does not exist.")
 
-
         # Read the image using OpenCV
         image = cv2.imread(file_path, cv2.IMREAD_COLOR)
         if image is None:
             raise ValueError("Unable to read the image file.")
 
-        # Resize the image to the model's expected input size
+        # Изменение размера
         image = cv2.resize(image, (256, 256))
 
-        # Preprocess the image for the model
-        raw = np.expand_dims(image, axis=0) / 255.0  # Normalize pixel values to [0, 1]
+        raw = np.expand_dims(image, axis=0)  # Изменяем размерность до (1, 256, 256, 3)
 
-        # Make a prediction using the model
-        pred = model.predict(raw)
+        pred = model.predict(raw)  # Получаем predict
 
-        # Post-process the prediction
-        pred = pred.squeeze()  # Remove the batch dimension
-        pred = (pred * 255).astype(np.uint8)  # Scale to [0, 255] and convert to uint8
+        pred = pred.squeeze().reshape(256, 256) * 255  # predic t приводим к адекватной размерости в (256, 256)
 
-        # Save the processed image
+        # Схранение обработанного файла
         processed_image_path = os.path.join(UPLOAD_FOLDER, 'processed_' + os.path.basename(file_path))
         cv2.imwrite(processed_image_path, pred)
 
