@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Input, Lambda, Conv2D, MaxPooling2D, Conv2DT
 import tensorflow as tf
 
 
-def build():
+def build(model_path):
   print("Используемая версия tensorflow ", tf.__version__)
   inputs = Input((256, 256, 3))
   s = Lambda(lambda x: x / 255) (inputs)
@@ -71,5 +71,5 @@ def build():
 
   model = Model(inputs=[inputs], outputs=[outputs])
   model.compile(optimizer='Adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
-  model.load_weights(r'C:\Users\vi\Desktop\dilpom\обученные модели\model_6_10.h5')
+  model.load_weights(model_path)
   return model

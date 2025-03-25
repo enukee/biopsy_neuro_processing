@@ -3,15 +3,17 @@ from flask import Flask, request, jsonify, send_file
 import cv2  # OpenCV для обработки изображений
 import numpy as np
 from model import build
+from test import test_processing
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-# Load the model once at the start
-model = build()
+PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_6_10.h5'
+# Загрузка модели
+model = build(PATH_TO_MODEL)
 
 app = Flask(__name__)
 
-# Укажите директорию для сохранения загруженных файлов
+# Директория для сохранения загруженных файлов
 UPLOAD_FOLDER = 'C://Users//vi//Desktop//dilpom//app//img_processing//'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
