@@ -3,11 +3,12 @@ from flask import Flask, request, jsonify, send_file
 import cv2  # OpenCV для обработки изображений
 import numpy as np
 from model import build
+from transliterate import transliterate_file
 from test import test_processing
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_6_10.h5'
+PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_7_1.weights.h5'
 # Загрузка модели
 model = build(PATH_TO_MODEL)
 
@@ -31,6 +32,9 @@ def proceed_file():
     # Сохранение файла
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
+
+    # Замена русских букв в имени файла
+    file_path = transliterate_file(file_path)
 
     # Обработка изображения
     processed_image_path = process_image(file_path)
