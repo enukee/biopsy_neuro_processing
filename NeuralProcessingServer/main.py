@@ -8,7 +8,7 @@ from test import test_processing
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_7_1.weights.h5'
+PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_8_4.weights.h5'
 # Загрузка модели
 model = build(PATH_TO_MODEL)
 
@@ -56,13 +56,15 @@ def process_image(file_path):
             raise ValueError("Unable to read the image file.")
 
         # Изменение размера
-        image = cv2.resize(image, (256, 256))
+        # image = cv2.resize(image, (256, 256))
 
         raw = np.expand_dims(image, axis=0)  # Изменяем размерность до (1, 256, 256, 3)
 
         pred = model.predict(raw)  # Получаем predict
 
-        pred = pred.squeeze().reshape(256, 256) * 255  # predic t приводим к адекватной размерости в (256, 256)
+        pred = pred.squeeze().reshape(image.shape[0], image.shape[1]) * 255  # predic t приводим к адекватной размерости в (256, 256)
+
+        filter_img = filter_image(pred)
 
         # Схранение обработанного файла
         processed_image_path = os.path.join(UPLOAD_FOLDER, 'processed_' + os.path.basename(file_path))

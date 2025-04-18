@@ -1,75 +1,51 @@
 from keras import Model
-from tensorflow.keras.layers import Input, Lambda, Conv2D, MaxPooling2D, Conv2DTranspose, concatenate, Dropout
+from tensorflow.keras.layers import Lambda, Conv2D, MaxPool2D, Conv2DTranspose, Concatenate, BatchNormalization
+from tensorflow.keras import Input
 import tensorflow as tf
+
+SIZE = None
+
+# Кастомная UNET
+def unet(n_levels, initial_features=32, n_blocks=2, kernel_size=3, pooling_size=2, in_channels=1, out_channels=3):
+  inputs = Input(shape=(SIZE, SIZE, in_channels))
+  x = Lambda(lambda x: x / 255) (inputs)
+  convpars = dict(kernel_size=kernel_size, activation='elu', kernel_initializer='he_normal', padding='same')
+
+  #downstream
+
+  skips = {}
+
+  for level in range(n_levels):
+    for _ in range(n_blocks):
+      x = Conv2D(initial_features * 2 ** level, **convpars)(x)
+      x = BatchNormalization()(x)
+    if level < n_levels - 1:
+      skips[level] = x
+      x = MaxPool2D(pooling_size)(x)
+
+
+
+  # upstream
+  for level in reversed(range(n_levels - 1)):
+    x = Conv2DTranspose(initial_features * 2 ** level, strides=pooling_size, **convpars)(x)
+    x = Concatenate()([x, skips[level]])
+    for _ in range(n_blocks):
+      x = Conv2D(initial_features * 2 ** level, **convpars)(x)
+      x = BatchNormalization()(x)
+
+
+
+  # output
+  activation = 'sigmoid' if out_channels == 1 else 'softmax'
+  x = Conv2D(out_channels, kernel_size=1, activation=activation, padding='same')(x)
+  return Model(inputs=[inputs], outputs=[x], name=f'UNET-L{n_levels}-F{initial_features}')
 
 
 def build(model_path):
   print("Используемая версия tensorflow ", tf.__version__)
-  inputs = Input((256, 256, 3))
-  s = Lambda(lambda x: x / 255) (inputs)
+  model = unet(7, in_channels=3, out_channels=1)
 
-  c0 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (s)
-  c0 = Dropout(0.5) (c0)
-  c0 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c0)
-  p0 = MaxPooling2D((2, 2)) (c0)
-
-  c1 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (p0)
-  c1 = Dropout(0.5) (c1)
-  c1 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c1)
-  p1 = MaxPooling2D((2, 2)) (c1)
-
-  c2 = Conv2D(32, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (p1)
-  c2 = Dropout(0.5) (c2)
-  c2 = Conv2D(32, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c2)
-  p2 = MaxPooling2D((2, 2)) (c2)
-
-  c3 = Conv2D(64, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (p2)
-  c3 = Dropout(0.5) (c3)
-  c3 = Conv2D(64, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c3)
-  p3 = MaxPooling2D((2, 2)) (c3)
-
-  c4 = Conv2D(128, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (p3)
-  c4 = Dropout(0.5) (c4)
-  c4 = Conv2D(128, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c4)
-  p4 = MaxPooling2D(pool_size=(2, 2)) (c4)
-
-  c5 = Conv2D(256, (5, 5), activation='elu', kernel_initializer='he_normal', padding='same') (p4)
-  c5 = Dropout(0.5) (c5)
-  c5 = Conv2D(256, (5, 5), activation='elu', kernel_initializer='he_normal', padding='same') (c5)
-
-  u6 = Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same') (c5)
-  u6 = concatenate([u6, c4])
-  c6 = Conv2D(128, (7, 7), activation='elu', kernel_initializer='he_normal', padding='same') (u6)
-  c6 = Dropout(0.5) (c6)
-  c6 = Conv2D(128, (7, 7), activation='elu', kernel_initializer='he_normal', padding='same') (c6)
-
-  u7 = Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same') (c6)
-  u7 = concatenate([u7, c3])
-  c7 = Conv2D(64, (7, 7), activation='elu', kernel_initializer='he_normal', padding='same') (u7)
-  c7 = Dropout(0.5) (c7)
-  c7 = Conv2D(64, (7, 7), activation='elu', kernel_initializer='he_normal', padding='same') (c7)
-
-  u8 = Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same') (c7)
-  u8 = concatenate([u8, c2])
-  c8 = Conv2D(32, (5, 5), activation='elu', kernel_initializer='he_normal', padding='same') (u8)
-  c8 = Dropout(0.5) (c8)
-  c8 = Conv2D(32, (5, 5), activation='elu', kernel_initializer='he_normal', padding='same') (c8)
-
-  u9 = Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same') (c8)
-  u9 = concatenate([u9, c1], axis=3)
-  c9 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (u9)
-  c9 = Dropout(0.5) (c9)
-  c9 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c9)
-
-  u10 = Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same') (c9)
-  u10 = concatenate([u10, c0], axis=3)
-  c10 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (u10)
-  c10 = Dropout(0.5) (c10)
-  c10 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', padding='same') (c10)
-
-  outputs = Conv2D(1, (1, 1), activation='sigmoid') (c10)
-
-  model = Model(inputs=[inputs], outputs=[outputs])
-  model.compile(optimizer='Adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
+  model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
   model.load_weights(model_path)
+  model.summary()
   return model
