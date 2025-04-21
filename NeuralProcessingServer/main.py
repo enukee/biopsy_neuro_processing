@@ -43,6 +43,35 @@ def proceed_file():
     return send_file(processed_image_path, as_attachment=True)
 
 
+def filter_image(img):
+    # бинаризация изображения
+    _, thresholded = cv2.threshold(img.astype(np.uint8), 127, 255, cv2.THRESH_BINARY)
+
+    # определение ядра
+    kernel = np.ones((5, 5), np.uint8)
+    # делотация изображения
+    dilation = cv2.dilate(thresholded, kernel)
+
+    contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Зададим порог для площади контуров
+    print(len(contours))
+    area_threshold = 3000
+    for contour in contours:
+        # Вычислим площадь контура
+        area = cv2.contourArea(contour)
+        # Если площадь контура меньше порога, закрасим его черным
+        if area < area_threshold:
+            cv2.drawContours(dilation, [contour], -1, (0), thickness=cv2.FILLED)
+
+        else:
+            # Найдем выпуклую оболочку для контура
+            hull = cv2.convexHull(contour)
+            # Заливаем выпуклую оболочку на маске
+            cv2.drawContours(dilation, [hull], -1, (255), thickness=cv2.FILLED)
+
+    return thresholded
+
+
 def process_image(file_path):
     try:
         if os.path.exists(file_path):
@@ -62,13 +91,14 @@ def process_image(file_path):
 
         pred = model.predict(raw)  # Получаем predict
 
-        pred = pred.squeeze().reshape(image.shape[0], image.shape[1]) * 255  # predic t приводим к адекватной размерости в (256, 256)
+        output_image = pred.squeeze().reshape(image.shape[0], image.shape[1]) * 255  # predic t приводим к адекватной размерости в (256, 256)
 
-        filter_img = filter_image(pred)
+        # фильтрация предсказанной маски
+        output_image = filter_image(output_image)
 
         # Схранение обработанного файла
         processed_image_path = os.path.join(UPLOAD_FOLDER, 'processed_' + os.path.basename(file_path))
-        cv2.imwrite(processed_image_path, pred)
+        cv2.imwrite(processed_image_path, output_image)
 
         return processed_image_path
 
