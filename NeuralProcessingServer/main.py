@@ -43,6 +43,26 @@ def proceed_file():
     return send_file(processed_image_path, as_attachment=True)
 
 
+def applying_mask(img, pred):
+    # Найдем контуры на бинарном изображении
+    contours, _ = cv2.findContours(pred, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Создадим копию исходного изображения для наложения контуров
+    output_image = img.copy()
+
+    # Создадим маску для прозрачной заливки
+    mask = np.zeros_like(output_image, dtype=np.uint8)
+
+    # Заливаем контуры на маске
+    cv2.drawContours(mask, contours, -1, (0, 255, 0, 128), thickness=cv2.FILLED)  # Зеленый цвет с прозрачностью 128
+
+    # Наложим маску на исходное изображение
+    alpha = 0.2  # Коэффициент прозрачности
+    output_image = cv2.addWeighted(output_image, 1, mask, alpha, 0)
+    output_image = cv2.drawContours(output_image, contours, -1, (0, 255, 0), 2)
+    return output_image
+
+
 def filter_image(img):
     # бинаризация изображения
     _, thresholded = cv2.threshold(img.astype(np.uint8), 127, 255, cv2.THRESH_BINARY)
@@ -95,6 +115,9 @@ def process_image(file_path):
 
         # фильтрация предсказанной маски
         output_image = filter_image(output_image)
+
+        # наложение макси на исходное изображение
+        output_image = applying_mask(image, output_image)
 
         # Схранение обработанного файла
         processed_image_path = os.path.join(UPLOAD_FOLDER, 'processed_' + os.path.basename(file_path))
