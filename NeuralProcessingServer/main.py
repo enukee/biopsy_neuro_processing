@@ -1,16 +1,10 @@
 import os
 from flask import Flask, request, jsonify, send_file
-import cv2  # OpenCV для обработки изображений
-import numpy as np
-from model import build
 from transliterate import transliterate_file
 from test import test_processing
+from image_processing import process_image
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
-PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_8_4.weights.h5'
-# Загрузка модели
-model = build(PATH_TO_MODEL)
 
 app = Flask(__name__)
 
@@ -37,98 +31,10 @@ def proceed_file():
     file_path = transliterate_file(file_path)
 
     # Обработка изображения
-    processed_image_path = process_image(file_path)
+    processed_image_path = process_image(UPLOAD_FOLDER, file_path)
 
     # Отправка обработанного изображения обратно клиенту
     return send_file(processed_image_path, as_attachment=True)
-
-
-def applying_mask(img, pred):
-    # Найдем контуры на бинарном изображении
-    contours, _ = cv2.findContours(pred, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Создадим копию исходного изображения для наложения контуров
-    output_image = img.copy()
-
-    # Создадим маску для прозрачной заливки
-    mask = np.zeros_like(output_image, dtype=np.uint8)
-
-    # Заливаем контуры на маске
-    cv2.drawContours(mask, contours, -1, (0, 255, 0, 128), thickness=cv2.FILLED)  # Зеленый цвет с прозрачностью 128
-
-    # Наложим маску на исходное изображение
-    alpha = 0.2  # Коэффициент прозрачности
-    output_image = cv2.addWeighted(output_image, 1, mask, alpha, 0)
-    output_image = cv2.drawContours(output_image, contours, -1, (0, 255, 0), 2)
-    return output_image
-
-
-def filter_image(img):
-    # бинаризация изображения
-    _, thresholded = cv2.threshold(img.astype(np.uint8), 127, 255, cv2.THRESH_BINARY)
-
-    # определение ядра
-    kernel = np.ones((5, 5), np.uint8)
-    # делотация изображения
-    dilation = cv2.dilate(thresholded, kernel)
-
-    contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # Зададим порог для площади контуров
-    print(len(contours))
-    area_threshold = 3000
-    for contour in contours:
-        # Вычислим площадь контура
-        area = cv2.contourArea(contour)
-        # Если площадь контура меньше порога, закрасим его черным
-        if area < area_threshold:
-            cv2.drawContours(dilation, [contour], -1, (0), thickness=cv2.FILLED)
-
-        else:
-            # Найдем выпуклую оболочку для контура
-            hull = cv2.convexHull(contour)
-            # Заливаем выпуклую оболочку на маске
-            cv2.drawContours(dilation, [hull], -1, (255), thickness=cv2.FILLED)
-
-    return thresholded
-
-
-def process_image(file_path):
-    try:
-        if os.path.exists(file_path):
-            print("File exists.")
-        else:
-            print("File does not exist.")
-
-        # Read the image using OpenCV
-        image = cv2.imread(file_path, cv2.IMREAD_COLOR)
-        if image is None:
-            raise ValueError("Unable to read the image file.")
-
-        # Изменение размера
-        # image = cv2.resize(image, (256, 256))
-
-        raw = np.expand_dims(image, axis=0)  # Изменяем размерность до (1, 256, 256, 3)
-
-        pred = model.predict(raw)  # Получаем predict
-
-        output_image = pred.squeeze().reshape(image.shape[0], image.shape[1]) * 255  # predic t приводим к адекватной размерости в (256, 256)
-
-        # фильтрация предсказанной маски
-        output_image = filter_image(output_image)
-
-        # наложение макси на исходное изображение
-        output_image = applying_mask(image, output_image)
-
-        # Схранение обработанного файла
-        processed_image_path = os.path.join(UPLOAD_FOLDER, 'processed_' + os.path.basename(file_path))
-        cv2.imwrite(processed_image_path, output_image)
-
-        return processed_image_path
-
-    except Exception as e:
-        # Log the error and return None or handle it as needed
-        print(f"Error processing image: {e}")
-        return None
 
 
 if __name__ == '__main__':
