@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, send_file
 from transliterate import transliterate_file
 from test import test_processing
-from image_processing import process_image
+from image_processing import process_image, img_report
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -35,6 +35,17 @@ def proceed_file():
 
     # Отправка обработанного изображения обратно клиенту
     return send_file(processed_image_path, as_attachment=True)
+
+
+@app.route('/report', methods=['GET'])
+def get_report():
+    if img_report is not None:
+        rep = img_report.get_report()
+        print(rep)
+        return jsonify(rep)
+
+    else:
+        return jsonify({'error': 'Report is none'}), 400
 
 
 if __name__ == '__main__':
