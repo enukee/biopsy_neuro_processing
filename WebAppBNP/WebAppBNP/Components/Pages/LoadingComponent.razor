@@ -1,0 +1,27 @@
+﻿@page "/loading"
+@implements IDisposable
+
+<h3>@loadingText</h3>
+
+@code {
+    private string loadingText = "Загрузка";
+    private Timer timer;
+    private int dotCount = 0;
+
+    protected override void OnInitialized()
+    {
+        timer = new Timer(UpdateLoadingText, null, 0, 500); // Обновляем каждые 500 мс
+    }
+
+    private void UpdateLoadingText(object state)
+    {
+        dotCount = (dotCount + 1) % 4; // Цикл от 0 до 3
+        loadingText = "Загрузка" + new string('.', dotCount);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}

@@ -27,7 +27,7 @@
         downloadLink.download = fileName;
         downloadLink.click();
     }
-</script>
+    </script>
 <br>
 
 @if (imageDataUrl != null)
@@ -43,7 +43,7 @@
     @if (report == null)
     {
         <p>Отчёт не получен</p>
-}
+    }
 
     else
     {
@@ -59,12 +59,22 @@
     }
 }
 
+@if (isImageInProcessing)
+{
+    <br>
+    <LoadingComponent />
+}
+
+<script src="js/loadingAnimation.js"></script>
+
 @code {
     private IBrowserFile selectedFile;
     private string imageDataUrl;
     private string processedImageDataUrl;
     private bool isProcessBtnDisabled = true;
     private bool isDownloadBtnDisabled = true;
+
+    private bool isImageInProcessing = false;
 
     private Report? report;
 
@@ -110,6 +120,8 @@
         content.Add(streamContent, "file", file.Name);
 
         Console.WriteLine("Отправляем файл на сервер...");
+        // Включение анимации загрузки
+        isImageInProcessing = true;
 
         var response = await Http.PostAsync("http://127.0.0.1:5000/proceed", content);
 
@@ -121,11 +133,15 @@
             isDownloadBtnDisabled = false;
             // Обновляем интерфейс, чтобы отобразить обработанное изображение
             StateHasChanged();
+            
+            // Загрузка отчёта
+            await UploadReport();
         }
         else
         {
             Console.WriteLine($"Ошибка при загрузке файла: {response.StatusCode}");
         }
+        isImageInProcessing = false;
     }
 
     private async Task UploadReport()
