@@ -34,16 +34,16 @@
     background-size: cover;
 }
 
-.bi-house-door-nav-menu {
+.bi-house-door-nav-menu {   /* »конка домашней страницы */
     background-image: url("house-door.svg");
-    background-size: contain; /* ”бедитесь, что иконка подходит по размеру */
+    background-size: contain;
     width: 30px;
     height: 30px;
 }
 
-.bi-image-nav-menu {
+.bi-image-nav-menu {    /* »конка страницы обработки */
     background-image: url("processing.svg");
-    background-size: contain; /* ”бедитесь, что иконка подходит по размеру */
+    background-size: contain;
     width: 33px;
     height: 30px;
 }
@@ -100,9 +100,7 @@
     }
 
     .nav-scrollable {
-        /* Never collapse the sidebar for wide screens */
         display: block;
-        /* Allow sidebar to scroll for tall menus */
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
         background-color: #787878; /*это основна€ панель на NavMenu*/

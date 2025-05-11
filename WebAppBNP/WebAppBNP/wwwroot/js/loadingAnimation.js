@@ -1,4 +1,12 @@
-﻿window.loadingAnimation = {
+﻿window.downloadFileFromBase64 = (fileName, base64Data) => {
+    const linkSource = base64Data;
+    const downloadLink = document.createElement("a");
+    downloadLink.href = linkSource;
+    downloadLink.download = fileName;
+    downloadLink.click();
+};
+
+window.loadingAnimation = {
     start: function (elementId) {
         const element = document.getElementById(elementId);
         if (element) {
