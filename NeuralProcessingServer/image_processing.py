@@ -2,7 +2,7 @@ import os
 import cv2  # OpenCV для обработки изображений
 import numpy as np
 
-from model import build
+from model import build, DIVIDER
 from report import Report
 
 PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_8_4.weights.h5'
@@ -84,6 +84,27 @@ def create_report(pred):
         img_report.add_contour(center, area)
 
 
+def resize(img):
+    def find_next_multiple_of_divider(n):
+        if n % DIVIDER == 0:
+            return n
+        else:
+            return (n // DIVIDER + 1) * DIVIDER
+
+    # вычисление новых рахмеров
+    height, width = img.shape[:2]
+    new_width = find_next_multiple_of_divider(width)
+    new_height = find_next_multiple_of_divider(height)
+
+    if height == new_height and width == new_width:
+        return img
+
+    # создание нового изображения белого цвета
+    white_image = np.ones((new_height, new_width, 3), dtype=np.uint8) * 255
+    white_image[0:height, 0:width] = img
+    return white_image
+
+
 def process_image(upload_folder, file_path):
     try:
         if os.path.exists(file_path):
@@ -96,14 +117,19 @@ def process_image(upload_folder, file_path):
         if image is None:
             raise ValueError("Unable to read the image file.")
 
+        # сохранение размера
+        height, width = image.shape[:2]
+
         # Изменение размера
-        # image = cv2.resize(image, (256, 256))
+        image = resize(image)
 
         raw = np.expand_dims(image, axis=0)  # Изменяем размерность до (1, 256, 256, 3)
 
         pred = model.predict(raw)  # Получаем predict
 
         output_image = pred.squeeze().reshape(image.shape[0], image.shape[1]) * 255  # predic t приводим к адекватной размерости в (256, 256)
+
+        output_image = output_image[0:height, 0:width]
 
         # фильтрация предсказанной маски
         output_image = filter_image(output_image)

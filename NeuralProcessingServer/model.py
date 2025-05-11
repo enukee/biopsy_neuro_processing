@@ -3,7 +3,10 @@ from tensorflow.keras.layers import Lambda, Conv2D, MaxPool2D, Conv2DTranspose, 
 from tensorflow.keras import Input
 import tensorflow as tf
 
-SIZE = None
+SIZE = None                     # Размерность входного слоя
+N_LEVELS = 7                    # Количество уровней модели
+DIVIDER = pow(2, N_LEVELS - 1)  # Делитель, модель принимает только данные размерность которых кратна DIVIDER
+
 
 # Кастомная UNET
 def unet(n_levels, initial_features=32, n_blocks=2, kernel_size=3, pooling_size=2, in_channels=1, out_channels=3):
@@ -43,7 +46,7 @@ def unet(n_levels, initial_features=32, n_blocks=2, kernel_size=3, pooling_size=
 
 def build(model_path):
   print("Используемая версия tensorflow ", tf.__version__)
-  model = unet(7, in_channels=3, out_channels=1)
+  model = unet(N_LEVELS, in_channels=3, out_channels=1)
 
   model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
   model.load_weights(model_path)
