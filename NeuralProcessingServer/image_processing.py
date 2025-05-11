@@ -107,15 +107,13 @@ def resize(img):
 
 def process_image(upload_folder, file_path):
     try:
-        if os.path.exists(file_path):
-            print("File exists.")
-        else:
-            print("File does not exist.")
+        if not os.path.exists(file_path):
+            return None, "File does not exist."
 
         # Read the image using OpenCV
         image = cv2.imread(file_path, cv2.IMREAD_COLOR)
         if image is None:
-            raise ValueError("Unable to read the image file.")
+            return None, "Unable to read the image file."
 
         # сохранение размера
         height, width = image.shape[:2]
@@ -144,9 +142,7 @@ def process_image(upload_folder, file_path):
         processed_image_path = os.path.join(upload_folder, 'processed_' + os.path.basename(file_path))
         cv2.imwrite(processed_image_path, output_image)
 
-        return processed_image_path
+        return processed_image_path, None
 
     except Exception as e:
-        # Log the error and return None or handle it as needed
-        print(f"Error processing image: {e}")
-        return None
+        return None, f"Error processing image: {e}"
