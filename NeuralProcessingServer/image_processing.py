@@ -38,28 +38,27 @@ def filter_image(img):
     _, thresholded = cv2.threshold(img.astype(np.uint8), 127, 255, cv2.THRESH_BINARY)
 
     # определение ядра
-    kernel = np.ones((5, 5), np.uint8)
-    # делотация изображения
-    dilation = cv2.dilate(thresholded, kernel)
+    kernel = np.ones((3, 3), np.uint8)
+    # закрытие пробелов изображения
+    closing = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, kernel)
 
-    contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Зададим порог для площади контуров
-    print(len(contours))
     area_threshold = 3000
     for contour in contours:
-        # Вычислим площадь контура
-        area = cv2.contourArea(contour)
-        # Если площадь контура меньше порога, закрасим его черным
-        if area < area_threshold:
-            cv2.drawContours(dilation, [contour], -1, (0), thickness=cv2.FILLED)
+      # Вычислим площадь контура
+      area = cv2.contourArea(contour)
+      # Если площадь контура меньше порога, закрасим его черным
+      if area < area_threshold:
+          cv2.drawContours(closing, [contour], -1, (0), thickness=cv2.FILLED)
 
-        else:
-            # Найдем выпуклую оболочку для контура
-            hull = cv2.convexHull(contour)
-            # Заливаем выпуклую оболочку на маске
-            cv2.drawContours(dilation, [hull], -1, (255), thickness=cv2.FILLED)
+      else:
+          # Найдем выпуклую оболочку для контура
+          hull = cv2.convexHull(contour)
+          # Заливаем выпуклую оболочку на маске
+          cv2.drawContours(closing, [hull], -1, (255), thickness=cv2.FILLED)
 
-    return dilation
+    return closing
 
 
 def create_report(pred):
