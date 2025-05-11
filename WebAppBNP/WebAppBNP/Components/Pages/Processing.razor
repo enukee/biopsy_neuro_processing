@@ -38,6 +38,25 @@
 @if (processedImageDataUrl != null)
 {
     <img src="@processedImageDataUrl" width="300" alt="Обработанное изображение" style="padding: 1em;" />
+    <br>
+    <h3>Отчёт</h3>
+    @if (report == null)
+    {
+        <p>Отчёт не получен</p>
+}
+
+    else
+    {
+        <ul>
+            @if (report.ObjectsArea != null)
+            {
+                @for (int i = 0; i < report.ObjectsArea.Count; i++)
+                {
+                    <li>Площадь: @report.ObjectsArea[i]; Местоположение: @report.ObjectsCenter[i][0],@report.ObjectsCenter[i][1]</li>
+                }
+            }
+        </ul>
+    }
 }
 
 @code {
@@ -46,6 +65,8 @@
     private string processedImageDataUrl;
     private bool isProcessBtnDisabled = true;
     private bool isDownloadBtnDisabled = true;
+
+    private Report? report;
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -107,11 +128,58 @@
         }
     }
 
+    private async Task UploadReport()
+    {
+        try
+        {
+            // Получаем сырой JSON для отладки
+            var jsonResponse = await Http.GetStringAsync("http://127.0.0.1:5000/report");
+            Console.WriteLine("Raw JSON Response:");
+            Console.WriteLine(jsonResponse);
+
+            // Десериализуем JSON в объект Data
+            report = System.Text.Json.JsonSerializer.Deserialize<Report>(jsonResponse);
+
+            if (report != null)
+            {
+                if (report.ObjectsCenter != null && report.ObjectsArea != null)
+                {
+                    Console.WriteLine("Data loaded successfully.");
+                }
+                else
+                {
+                    Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Failed to deserialize data.");
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            Console.WriteLine("\nException Caught!");
+            Console.WriteLine("Message :{0} ", e.Message);
+        }
+    }
+
     private async Task DownloadProcessedImage()
     {
         if (!string.IsNullOrEmpty(processedImageDataUrl))
         {
             await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", "processed_image.jpg", processedImageDataUrl);
         }
+    }
+
+    public class Report
+    {
+        public List<double> ObjectsArea { get; set; }
+        public List<List<int>> ObjectsCenter { get; set; }
+    }
+
+    public class Center
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
     }
 }
