@@ -28,7 +28,11 @@
 
 @if (processedImageDataUrl != null)
 {
-    <img src="@processedImageDataUrl" width="300" alt="Обработанное изображение" style="padding: 1em;" />
+    <div style="position: relative; display: inline-block;">
+        <img src="@processedImageDataUrl" width="300" alt="Обработанное изображение" style="padding: 1em;" />
+        <canvas id="procImageCanvas" width="300" height="300" style="position: absolute; top: 1em; left: 1em;"></canvas>
+    </div>
+
     <br>
     <h3>Отчёт</h3>
     @if (report == null)
@@ -38,7 +42,7 @@
 
     else
     {
-        <ul>
+        <ol>
             @if (report.ObjectsArea != null)
             {
                 @for (int i = 0; i < report.ObjectsArea.Count; i++)
@@ -46,7 +50,7 @@
                     <li>Площадь: @report.ObjectsArea[i]; Местоположение: @report.ObjectsCenter[i][0],@report.ObjectsCenter[i][1]</li>
                 }
             }
-        </ul>
+        </ol>
     }
 }
 
@@ -69,6 +73,8 @@
 
     private Report? report;
 
+    int imgWidth, imgHeight;
+
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         Console.WriteLine("uploading an image");
@@ -81,6 +87,13 @@
                 await selectedFile.OpenReadStream(104857600).CopyToAsync(memoryStream);
                 var buffer = memoryStream.ToArray();
                 imageDataUrl = $"data:{selectedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+
+                // Определяем размеры изображения
+                using (var image = System.Drawing.Image.FromStream(new MemoryStream(buffer)))
+                {
+                    imgWidth = image.Width;
+                    imgHeight = image.Height;
+                }
             }
         }
         catch (Exception ex)
@@ -124,7 +137,7 @@
             isDownloadBtnDisabled = false;
             // Обновляем интерфейс, чтобы отобразить обработанное изображение
             StateHasChanged();
-            
+
             // Загрузка отчёта
             await UploadReport();
         }
@@ -151,6 +164,17 @@
             {
                 if (report.ObjectsCenter != null && report.ObjectsArea != null)
                 {
+                    int height = 300;
+                    if (imgHeight != imgWidth)
+                        height = imgHeight * 300 / imgWidth;
+
+                    await JSRuntime.InvokeVoidAsync("clearCanvas", "procImageCanvas");
+                    for (int i = 0; i < report.ObjectsCenter.Count; i++)
+                    {
+                        int x = ((report.ObjectsCenter[i][0] * 300) / imgWidth) - 14;
+                        int y = ((report.ObjectsCenter[i][1] * height) / imgHeight) - 14;
+                        await JSRuntime.InvokeVoidAsync("drawSquare", "procImageCanvas", x, y, 15, "blue", i + 1);
+                    }
                     Console.WriteLine("Data loaded successfully.");
                 }
                 else

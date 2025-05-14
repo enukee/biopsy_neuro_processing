@@ -24,3 +24,31 @@ window.loadingAnimation = {
         clearInterval(intervalId);
     }
 };
+
+function clearCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
+function drawSquare(canvasId, x, y, size, color, text) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+
+    // Рисование квадрата
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, size, size);
+
+    // Настройка стиля текста
+    ctx.fillStyle = 'white'; // Цвет текста
+    ctx.font = '10px Arial'; // Размер и шрифт текста
+    ctx.textAlign = 'center'; // Выравнивание текста по центру
+    ctx.textBaseline = 'middle'; // Выравнивание текста по вертикали
+
+    // Вычисление координат для текста
+    const textX = x + size / 2;
+    const textY = y + size / 2;
+
+    // Рисование текста
+    ctx.fillText(text, textX, textY);
+};
