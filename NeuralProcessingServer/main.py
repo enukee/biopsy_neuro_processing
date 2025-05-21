@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, send_file
 from transliterate import transliterate_file
 from test import test_processing
-from image_processing import process_image, img_report
+from image_processing import process_image, report_manager
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -50,18 +50,27 @@ def proceed_file():
         return jsonify({'error': error}), 400
 
     # Отправка обработанного изображения обратно клиенту
-    return send_file(processed_image_path, as_attachment=True)
+    return send_file(
+        processed_image_path,
+        as_attachment=True,
+        download_name=os.path.basename(processed_image_path)  # Указываем имя файла
+    )
 
 
 @app.route('/report', methods=['GET'])
 def get_report():
-    if img_report is not None:
-        rep = img_report.get_report()
+    try:
+        file_name = request.args.get('requestID')
+        if not file_name:
+            return jsonify({'error': 'The requestID parameter was not passed'}), 400
+
+        rep = report_manager.get_report(file_name)
+        rep = rep.get_report()
         print(rep)
         return jsonify(rep)
 
-    else:
-        return jsonify({'error': 'Report is none'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 if __name__ == '__main__':

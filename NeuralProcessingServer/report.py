@@ -18,3 +18,31 @@ class Report:
     def clear(self):
         self.__centers.clear()
         self.__areas.clear()
+
+
+class ReportManager:
+    def __init__(self):
+        # Инициализация словаря для хранения отчетов
+        self.reports = {}
+
+    def add_report(self, filename, report):
+        """
+        Добавление отчета в словарь.
+
+        :param filename: Имя обработанного файла (уникальный ключ)
+        :param report: Отчет об обработке
+        """
+        if filename in self.reports:
+            raise ValueError("The report for this file already exists.")
+        self.reports[filename] = report
+
+    def get_report(self, filename):
+        """
+        Получение отчета по имени файла.
+
+        :param filename: Имя обработанного файла
+        :return: Отчет об обработке
+        """
+        if filename not in self.reports:
+            raise ValueError("There is no report for this file.")
+        return self.reports[filename]

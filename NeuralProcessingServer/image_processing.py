@@ -3,14 +3,14 @@ import cv2  # OpenCV для обработки изображений
 import numpy as np
 
 from model import build, DIVIDER
-from report import Report
+from report import Report, ReportManager
 
 PATH_TO_MODEL = r'C:\Users\vi\Desktop\dilpom\trained_models\model_8_4.weights.h5'
 # Загрузка модели
 model = build(PATH_TO_MODEL)
 
-# Создание отчёта
-img_report = Report()
+# Менеджерр отчётов
+report_manager = ReportManager()
 
 
 def applying_mask(img, pred):
@@ -64,7 +64,8 @@ def filter_image(img):
 def create_report(pred):
     contours, _ = cv2.findContours(pred, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    img_report.clear()
+    # Создание отчёта
+    img_report = Report()
 
     for contour in contours:
         # Вычислим площадь контура
@@ -82,6 +83,8 @@ def create_report(pred):
             center = (0, 0)  # или любое другое значение по умолчанию, если контур пустой
 
         img_report.add_contour(center, area)
+
+    return img_report
 
 
 def resize(img):
@@ -132,14 +135,19 @@ def process_image(upload_folder, file_path):
         # фильтрация предсказанной маски
         output_image = filter_image(output_image)
 
+        # имя обработанного файла
+        processed_file_name = 'processed_' + os.path.basename(file_path)
+
         # формирование отчёта
-        create_report(output_image)
+        report = create_report(output_image)
+        # кеширование отчёта
+        report_manager.add_report(processed_file_name, report)
 
         # наложение макси на исходное изображение
         output_image = applying_mask(image, output_image)
 
         # Схранение обработанного файла
-        processed_image_path = os.path.join(upload_folder, 'processed_' + os.path.basename(file_path))
+        processed_image_path = os.path.join(upload_folder, processed_file_name)
         cv2.imwrite(processed_image_path, output_image)
 
         return processed_image_path, None
