@@ -66,6 +66,7 @@ def get_report():
 
         rep = report_manager.get_report(file_name)
         rep = rep.get_report()
+        report_manager.remove_report(file_name)
         print(rep)
         return jsonify(rep)
 

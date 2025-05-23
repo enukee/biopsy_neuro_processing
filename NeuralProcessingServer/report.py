@@ -46,3 +46,13 @@ class ReportManager:
         if filename not in self.reports:
             raise ValueError("There is no report for this file.")
         return self.reports[filename]
+
+    def remove_report(self, filename):
+        """
+        Удаление отчета по имени файла.
+
+        :param filename: Имя обработанного файла
+        """
+        if filename not in self.reports:
+            raise ValueError("There is no report for this file.")
+        del self.reports[filename]
