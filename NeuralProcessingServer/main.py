@@ -26,7 +26,7 @@ def proceed_file():
     files = request.files.getlist('file')
 
     if len(files) != 1:
-        return jsonify({'error': 'Please upload exactly one file'}), 400
+        return jsonify({'error': 'Too many source files'}), 400
 
     file = files[0]
 
