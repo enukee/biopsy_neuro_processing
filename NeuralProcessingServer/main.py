@@ -18,7 +18,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
 
 
-@app.route('/proceed', methods=['POST'])
+@app.route('/process-image', methods=['POST'])
 def proceed_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
@@ -57,17 +57,15 @@ def proceed_file():
     )
 
 
-@app.route('/report', methods=['GET'])
-def get_report():
+@app.route('/report/<filename>', methods=['GET'])
+def get_report(filename):
     try:
-        file_name = request.args.get('requestID')
-        if not file_name:
-            return jsonify({'error': 'The requestID parameter was not passed'}), 400
+        if not filename:
+            return jsonify({'error': 'The filename parameter was not passed'}), 400
 
-        rep = report_manager.get_report(file_name)
+        rep = report_manager.get_report(filename)
         rep = rep.get_report()
-        report_manager.remove_report(file_name)
-        print(rep)
+        report_manager.remove_report(filename)
         return jsonify(rep)
 
     except Exception as e:
