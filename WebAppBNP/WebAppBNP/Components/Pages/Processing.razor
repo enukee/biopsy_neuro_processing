@@ -131,6 +131,9 @@
 
         if (response.IsSuccessStatusCode)
         {
+            var contentDisposition = response.Content.Headers.ContentDisposition;
+            var fileName = contentDisposition?.FileName;
+
             var processedImageBytes = await response.Content.ReadAsByteArrayAsync();
             processedImageDataUrl = $"data:image/jpg;base64,{Convert.ToBase64String(processedImageBytes)}";
             Console.WriteLine("Файл успешно загружен и обработан.");
@@ -139,7 +142,7 @@
             StateHasChanged();
 
             // Загрузка отчёта
-            await UploadReport();
+            await UploadReport(fileName);
         }
         else
         {
@@ -148,12 +151,12 @@
         isImageInProcessing = false;
     }
 
-    private async Task UploadReport()
+    private async Task UploadReport(string fileName)
     {
         try
         {
             // Получаем сырой JSON для отладки
-            var jsonResponse = await Http.GetStringAsync("http://127.0.0.1:5000/report");
+            var jsonResponse = await Http.GetStringAsync($"http://127.0.0.1:5000/report?requestID={Uri.EscapeDataString(fileName)}");
             Console.WriteLine("Raw JSON Response:");
             Console.WriteLine(jsonResponse);
 
