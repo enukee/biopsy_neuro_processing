@@ -1,0 +1,218 @@
+﻿@page "/series-processing"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Анализ изображений</PageTitle>
+<link rel="stylesheet" href="app.css">
+<script src="js/loadingAnimation.js"></script>
+
+<h1>Анализ серии изображений</h1>
+
+<button class="custom-button" @onclick="ProcessImages" disabled="@isProcessBtnDisabled">
+    Обработать изображения
+</button>
+
+<button class="custom-button" @onclick="DownloadProcessedImage" style="margin-left:20px;" disabled="@isDownloadBtnDisabled">
+    <img src="box-arrow-down.svg" width="20" height="20">
+</button>
+<br>
+
+<DropArea LoadImage="LoadImages" />
+
+<ProgressBar />
+
+@code {
+    private List<IBrowserFile> selectedFiles = new List<IBrowserFile>();
+    private List<string> imageDataUrls = new List<string>();
+    private List<string> processedImageDataUrls = new List<string>();
+    private Report reportCache = new Report();
+    private string pdgReport;
+
+    private int processingProgress = 0;
+    bool isDownloadBtnDisabled = true;
+    bool isProcessBtnDisabled = true;
+
+    private async Task LoadImages(List<IBrowserFile> files)
+    {
+        selectedFiles = files;
+        imageDataUrls.Clear();
+
+        foreach (var file in selectedFiles)
+        {
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.OpenReadStream(104857600).CopyToAsync(memoryStream);
+                    var buffer = memoryStream.ToArray();
+                    var imageDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+                    imageDataUrls.Add(imageDataUrl);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading file: {ex.Message}");
+            }
+        }
+
+        isProcessBtnDisabled = false;
+        StateHasChanged();
+        Console.WriteLine("State has changed called.");
+    }
+
+    private async Task ProcessImages()
+    {
+        Console.WriteLine("image processing");
+
+        if (selectedFiles.Any())
+        {   
+            processingProgress = 0;
+            await JSRuntime.InvokeVoidAsync("startProgress", 0);
+            int step = 100 / selectedFiles.Count;
+            foreach (IBrowserFile file in selectedFiles)
+            {
+                await UploadFile(file);
+                processingProgress += step;
+                await JSRuntime.InvokeVoidAsync("startProgress", processingProgress);
+            }
+            await JSRuntime.InvokeVoidAsync("startProgress", 100);
+            isDownloadBtnDisabled = false;
+            await UploadPDFReport();
+        }
+    }
+
+    private async Task UploadPDFReport()
+    {
+        string json = System.Text.Json.JsonSerializer.Serialize(reportCache, 
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await Http.PostAsync("http://127.0.0.1:5000/report/pdf", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                byte[] pdfBytes = await response.Content.ReadAsByteArrayAsync();
+                pdgReport = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+                Console.WriteLine("PDF-файл загружен.");
+            }
+            else
+            {
+                Console.WriteLine($"Ошибка при загрузке PDF: {response.StatusCode}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка при выполнении запроса: {ex.Message}");
+        }
+    }
+
+    private async Task UploadFile(IBrowserFile file)
+    {
+        var content = new MultipartFormDataContent();
+        var streamContent = new StreamContent(file.OpenReadStream(104857600));
+        content.Add(streamContent, "file", file.Name);
+
+        Console.WriteLine("Отправляем файл на сервер...");
+
+        var response = await Http.PostAsync("http://127.0.0.1:5000/process-image", content);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var contentDisposition = response.Content.Headers.ContentDisposition;
+            var fileName = contentDisposition?.FileName;
+
+            var processedImageBytes = await response.Content.ReadAsByteArrayAsync();
+            processedImageDataUrls.Add($"data:image/jpg;base64,{Convert.ToBase64String(processedImageBytes)}");
+            Console.WriteLine("Файл успешно загружен и обработан.");
+
+            // Обновляем интерфейс, чтобы отобразить обработанное изображение
+            StateHasChanged();
+
+            // Загрузка отчёта
+            await UploadReport(fileName);
+        }
+        else
+        {
+            Console.WriteLine($"Ошибка при загрузке файла: {response.StatusCode}");
+        }
+    }
+
+    private async Task UploadReport(string fileName)
+    {
+        try
+        {
+            // Получаем сырой JSON для отладки
+            var jsonResponse = await Http.GetStringAsync($"http://127.0.0.1:5000/report/{Uri.EscapeDataString(fileName)}");
+            Console.WriteLine("Raw JSON Response:");
+            Console.WriteLine(jsonResponse);
+
+            // Десериализуем JSON в объект Data
+            Report report = System.Text.Json.JsonSerializer.Deserialize<Report>(jsonResponse);
+
+            if (report != null)
+            {
+                if (report.ObjectsCenter != null && report.ObjectsArea != null)
+                {
+                    reportCache.AddReport(report);
+                    Console.WriteLine("Data loaded successfully.");
+                }
+                else
+                {
+                    Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Failed to deserialize data.");
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            Console.WriteLine("\nException Caught!");
+            Console.WriteLine("Message :{0} ", e.Message);
+        }
+    }
+
+    private async Task DownloadProcessedImage()
+    {
+        if (!isDownloadBtnDisabled && !string.IsNullOrEmpty(pdgReport))
+        {
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", "report.pdf", pdgReport);
+        }
+    }
+
+    public class Report
+    {
+        public List<double> ObjectsArea { get; set; }
+        public List<List<int>> ObjectsCenter { get; set; }
+
+        public Report()
+        {
+            ObjectsArea = new List<double>();
+            ObjectsCenter = new List<List<int>>();
+        }
+
+        public void AddReport(Report report)
+        {
+            var area = report.ObjectsArea;
+            var center = report.ObjectsCenter;
+            if (area is not null)   
+            {
+                ObjectsArea.AddRange(area);
+            }
+            if (center is not null)
+            {
+                ObjectsCenter.AddRange(center);
+            }
+        }
+    }
+
+    public class Center
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+    }
+}

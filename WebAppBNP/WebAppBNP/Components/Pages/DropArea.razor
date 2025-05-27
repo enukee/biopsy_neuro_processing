@@ -1,0 +1,71 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+
+<script src="js/fileLimit.js"></script>
+
+<div class="row">
+    <div class="col-12 p-0">
+        <div class="dropzone @dropClass rounded">
+            <InputFile id="dropArea" multiple
+                       OnChange="HandleFilesSelected"
+                       accept="image/png,image/jpg,image/jpeg"
+                       @ondragenter="HandleDragEnter"
+                       @ondragleave="HandleDragLeave" />
+
+            Загружено @(selectedFiles.Count) изображений
+        </div>
+        @if (selectedFiles != null && selectedFiles.Count > 0)
+        {
+            <div class="col-12">
+                <ul>
+                    @foreach (var file in selectedFiles)
+                    {
+                        <li>
+                            @file.Name
+                            <button class="btn btn-link text-danger p-0" type="button" @onclick="@(e => RemoveFile(file))">
+                                <span class="remove-button">x</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string dropClass = "";
+    private List<IBrowserFile> selectedFiles = new List<IBrowserFile>();
+
+    [Parameter]
+    public EventCallback<List<IBrowserFile>> LoadImage { get; set; }
+
+    private void HandleDragEnter()
+    {
+        dropClass = "dropzone-drag";
+    }
+
+    private void HandleDragLeave()
+    {
+        dropClass = "";
+    }
+
+    private async Task HandleFilesSelected(InputFileChangeEventArgs e)
+    {
+        dropClass = "";
+        if (e.FileCount > 0)
+        {
+            foreach (var file in e.GetMultipleFiles(50))
+            {
+                selectedFiles.Add(file);
+            }
+        }
+
+        await LoadImage.InvokeAsync(selectedFiles);
+    }
+
+    private void RemoveFile(IBrowserFile file)
+    {
+        selectedFiles.Remove(file);
+    }
+}
