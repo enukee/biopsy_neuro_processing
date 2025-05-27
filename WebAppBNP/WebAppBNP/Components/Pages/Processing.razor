@@ -127,7 +127,7 @@
         // Включение анимации загрузки
         isImageInProcessing = true;
 
-        var response = await Http.PostAsync("http://127.0.0.1:5000/proceed", content);
+        var response = await Http.PostAsync("http://127.0.0.1:5000/process-image", content);
 
         if (response.IsSuccessStatusCode)
         {
@@ -156,7 +156,7 @@
         try
         {
             // Получаем сырой JSON для отладки
-            var jsonResponse = await Http.GetStringAsync($"http://127.0.0.1:5000/report?requestID={Uri.EscapeDataString(fileName)}");
+            var jsonResponse = await Http.GetStringAsync($"http://127.0.0.1:5000/report/{Uri.EscapeDataString(fileName)}");
             Console.WriteLine("Raw JSON Response:");
             Console.WriteLine(jsonResponse);
 
