@@ -205,16 +205,4 @@
             await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", "processed_image.jpg", processedImageDataUrl);
         }
     }
-
-    public class Report
-    {
-        public List<double> ObjectsArea { get; set; }
-        public List<List<int>> ObjectsCenter { get; set; }
-    }
-
-    public class Center
-    {
-        public int X { get; set; }
-        public int Y { get; set; }
-    }
 }
