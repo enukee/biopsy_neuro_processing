@@ -21,7 +21,9 @@
     <img src="box-arrow-down.svg" width="20" height="20">
 </button>
 <br>
+<ScaleFields @ref="scaleFieldsComponent" />
 
+<br>
 @if (imageDataUrl != null)
 {
     <img src="@imageDataUrl" width="300" alt="Загруженное изображение" style="padding: 1em;" />
@@ -48,7 +50,7 @@
             {
                 @for (int i = 0; i < report.ObjectsArea.Count; i++)
                 {
-                    <li>Площадь: @report.ObjectsArea[i]; Местоположение: @report.ObjectsCenter[i][0],@report.ObjectsCenter[i][1]</li>
+                    <li>Площадь: @report.ObjectsArea[i] мкм<sup>2</sup>; Местоположение: @report.ObjectsCenter[i][0],@report.ObjectsCenter[i][1]</li>
                 }
             }
         </ol>
@@ -64,6 +66,8 @@
 <script src="js/loadingAnimation.js"></script>
 
 @code {
+    private ScaleFields scaleFieldsComponent;
+
     private IBrowserFile selectedFile;
     private string imageDataUrl;
     private string processedImageDataUrl;
@@ -122,16 +126,12 @@
                 processedImageDataUrl = response.imageUrl;
                 report = response.report;
 
-        Console.WriteLine("Отправляем файл на сервер...");
-        // Включение анимации загрузки
-        isImageInProcessing = true;
+                double scale = scaleFieldsComponent.ScaleValue / imgHeight;
 
-        var response = await Http.PostAsync("http://127.0.0.1:5000/process-image", content);
-
-        if (response.IsSuccessStatusCode)
+                for (int i = 0; i < report.ObjectsArea.Count; i++)
         {
-            var contentDisposition = response.Content.Headers.ContentDisposition;
-            var fileName = contentDisposition?.FileName;
+                    report.ObjectsArea[i] *= scale * scale;
+                    report.ObjectsArea[i] = Math.Round(report.ObjectsArea[i], 3);
             }
             }
             catch (Exception ex)

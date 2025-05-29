@@ -17,12 +17,14 @@
     <img src="box-arrow-down.svg" width="20" height="20">
 </button>
 <br>
+<ScaleFields @ref="scaleFieldsComponent" />
 
-<DropArea LoadImage="LoadImages" />
-
+<br>
 <ProgressBar />
 
 @code {
+    private ScaleFields scaleFieldsComponent;
+
     private List<IBrowserFile> selectedFiles = new List<IBrowserFile>();
     private List<string> imageDataUrls = new List<string>();
     private List<string> processedImageDataUrls = new List<string>();
@@ -32,6 +34,8 @@
     private int processingProgress = 0;
     bool isDownloadBtnDisabled = true;
     bool isProcessBtnDisabled = true;
+
+    private int imgHeight;
 
     private async Task LoadImages(List<IBrowserFile> files)
     {
@@ -48,7 +52,13 @@
                     var buffer = memoryStream.ToArray();
                     var imageDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
                     imageDataUrls.Add(imageDataUrl);
+
+                    // Определяем размеры изображения
+                    using (var image = System.Drawing.Image.FromStream(new MemoryStream(buffer)))
+                    {
+                        imgHeight = image.Height;
                 }
+            }
             }
             catch (Exception ex)
             {
@@ -77,9 +87,18 @@
                 var response = await DataProcessor.ProcessingImage(Http, file);
 
                 processedImageDataUrls.Add(response.imageUrl);
-                if (response.report.ObjectsCenter != null && response.report.ObjectsArea != null)
+
+                var data = response.report;
+                double scale = scaleFieldsComponent.ScaleValue / imgHeight;
+                if (data.ObjectsCenter != null && data.ObjectsArea != null)
                 {
-                    reports.AddReport(response.report);
+
+                    for (int i = 0; i < data.ObjectsArea.Count; i++)
+                {
+                        data.ObjectsArea[i] *= scale * scale;
+                        data.ObjectsArea[i] = Math.Round(data.ObjectsArea[i], 3);
+                    }
+                    reports.AddReport(data);
                 }
 
                 processingProgress += step;
