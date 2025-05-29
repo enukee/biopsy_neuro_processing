@@ -26,7 +26,7 @@
     private List<IBrowserFile> selectedFiles = new List<IBrowserFile>();
     private List<string> imageDataUrls = new List<string>();
     private List<string> processedImageDataUrls = new List<string>();
-    private Report reportCache = new Report();
+    private Report reports = new Report();
     private string pdgReport;
 
     private int processingProgress = 0;
@@ -65,114 +65,49 @@
     {
         Console.WriteLine("image processing");
 
-        if (selectedFiles.Any())
-        {   
             processingProgress = 0;
             await JSRuntime.InvokeVoidAsync("startProgress", 0);
             int step = 100 / selectedFiles.Count;
+
+        try
+        {
             foreach (IBrowserFile file in selectedFiles)
             {
-                await UploadFile(file);
+                // Обработка файла
+                var response = await DataProcessor.ProcessingImage(Http, file);
+
+                processedImageDataUrls.Add(response.imageUrl);
+                if (response.report.ObjectsCenter != null && response.report.ObjectsArea != null)
+                {
+                    reports.AddReport(response.report);
+                }
+
                 processingProgress += step;
                 await JSRuntime.InvokeVoidAsync("startProgress", processingProgress);
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка обработки: {ex.Message}");
+        }
             await JSRuntime.InvokeVoidAsync("startProgress", 100);
             isDownloadBtnDisabled = false;
             await UploadPDFReport();
         }
-    }
 
     private async Task UploadPDFReport()
     {
-        string json = System.Text.Json.JsonSerializer.Serialize(reportCache, 
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
         try
         {
-            var response = await Http.PostAsync("http://127.0.0.1:5000/report/pdf", content);
+            pdgReport = await DataProcessor.UploadPDFReport(Http, reports);
 
-            if (response.IsSuccessStatusCode)
-            {
-                byte[] pdfBytes = await response.Content.ReadAsByteArrayAsync();
-                pdgReport = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
-                Console.WriteLine("PDF-файл загружен.");
+            isDownloadBtnDisabled = false;
+            // Очистка кеша отчётов
+            reports.Clear();
             }
-            else
-            {
-                Console.WriteLine($"Ошибка при загрузке PDF: {response.StatusCode}");
-            }
-        }
         catch (HttpRequestException ex)
         {
             Console.WriteLine($"Ошибка при выполнении запроса: {ex.Message}");
-        }
-    }
-
-    private async Task UploadFile(IBrowserFile file)
-    {
-        var content = new MultipartFormDataContent();
-        var streamContent = new StreamContent(file.OpenReadStream(104857600));
-        content.Add(streamContent, "file", file.Name);
-
-        Console.WriteLine("Отправляем файл на сервер...");
-
-        var response = await Http.PostAsync("http://127.0.0.1:5000/process-image", content);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var contentDisposition = response.Content.Headers.ContentDisposition;
-            var fileName = contentDisposition?.FileName;
-
-            var processedImageBytes = await response.Content.ReadAsByteArrayAsync();
-            processedImageDataUrls.Add($"data:image/jpg;base64,{Convert.ToBase64String(processedImageBytes)}");
-            Console.WriteLine("Файл успешно загружен и обработан.");
-
-            // Обновляем интерфейс, чтобы отобразить обработанное изображение
-            StateHasChanged();
-
-            // Загрузка отчёта
-            await UploadReport(fileName);
-        }
-        else
-        {
-            Console.WriteLine($"Ошибка при загрузке файла: {response.StatusCode}");
-        }
-    }
-
-    private async Task UploadReport(string fileName)
-    {
-        try
-        {
-            // Получаем сырой JSON для отладки
-            var jsonResponse = await Http.GetStringAsync($"http://127.0.0.1:5000/report/{Uri.EscapeDataString(fileName)}");
-            Console.WriteLine("Raw JSON Response:");
-            Console.WriteLine(jsonResponse);
-
-            // Десериализуем JSON в объект Data
-            Report report = System.Text.Json.JsonSerializer.Deserialize<Report>(jsonResponse);
-
-            if (report != null)
-            {
-                if (report.ObjectsCenter != null && report.ObjectsArea != null)
-                {
-                    reportCache.AddReport(report);
-                    Console.WriteLine("Data loaded successfully.");
-                }
-                else
-                {
-                    Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
-                }
-            }
-            else
-            {
-                Console.WriteLine("Failed to deserialize data.");
-            }
-        }
-        catch (HttpRequestException e)
-        {
-            Console.WriteLine("\nException Caught!");
-            Console.WriteLine("Message :{0} ", e.Message);
         }
     }
 

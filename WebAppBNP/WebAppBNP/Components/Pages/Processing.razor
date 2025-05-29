@@ -114,15 +114,13 @@
 
         if (selectedFile != null)
         {
-            await UploadFile(selectedFile);
-        }
-    }
-
-    private async Task UploadFile(IBrowserFile file)
+            isImageInProcessing = true;
+            try
     {
-        var content = new MultipartFormDataContent();
-        var streamContent = new StreamContent(file.OpenReadStream(104857600));
-        content.Add(streamContent, "file", file.Name);
+                // Обработка файла
+                var response = await DataProcessor.ProcessingImage(Http, selectedFile);
+                processedImageDataUrl = response.imageUrl;
+                report = response.report;
 
         Console.WriteLine("Отправляем файл на сервер...");
         // Включение анимации загрузки
@@ -134,36 +132,26 @@
         {
             var contentDisposition = response.Content.Headers.ContentDisposition;
             var fileName = contentDisposition?.FileName;
+            }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка обработки: {ex.Message}");
+            }
 
-            var processedImageBytes = await response.Content.ReadAsByteArrayAsync();
-            processedImageDataUrl = $"data:image/jpg;base64,{Convert.ToBase64String(processedImageBytes)}";
-            Console.WriteLine("Файл успешно загружен и обработан.");
+            isImageInProcessing = false;
             isDownloadBtnDisabled = false;
-            // Обновляем интерфейс, чтобы отобразить обработанное изображение
+
+            // Обновление интерфейса
             StateHasChanged();
 
-            // Загрузка отчёта
-            await UploadReport(fileName);
+            // Нумерация объектов на изображении
+            await ObjectsNumbering();
         }
-        else
-        {
-            Console.WriteLine($"Ошибка при загрузке файла: {response.StatusCode}");
-        }
-        isImageInProcessing = false;
     }
 
-    private async Task UploadReport(string fileName)
-    {
-        try
+    private async Task ObjectsNumbering()
         {
-            // Получаем сырой JSON для отладки
-            var jsonResponse = await Http.GetStringAsync($"http://127.0.0.1:5000/report/{Uri.EscapeDataString(fileName)}");
-            Console.WriteLine("Raw JSON Response:");
-            Console.WriteLine(jsonResponse);
-
-            // Десериализуем JSON в объект Data
-            report = System.Text.Json.JsonSerializer.Deserialize<Report>(jsonResponse);
-
             if (report != null)
             {
                 if (report.ObjectsCenter != null && report.ObjectsArea != null)
@@ -185,16 +173,6 @@
                 {
                     Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
                 }
-            }
-            else
-            {
-                Console.WriteLine("Failed to deserialize data.");
-            }
-        }
-        catch (HttpRequestException e)
-        {
-            Console.WriteLine("\nException Caught!");
-            Console.WriteLine("Message :{0} ", e.Message);
         }
     }
 
