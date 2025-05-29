@@ -1,5 +1,8 @@
 import os
 from flask import Flask, request, jsonify, send_file
+
+from pdf_report import create_pdf
+from report import Report
 from transliterate import transliterate_file
 from test import test_processing
 from image_processing import process_image, report_manager
@@ -67,6 +70,33 @@ def get_report(filename):
         rep = rep.get_report()
         report_manager.remove_report(filename)
         return jsonify(rep)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/report/pdf', methods=['POST'])
+def create_pdf_report():
+    try:
+        # Получение JSON данные из тела запроса
+        data = request.get_json()
+
+        # Проверка, что данные не пустые
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        # Проверка наличия обязательных параметров
+        if 'ObjectsCenter' not in data or 'ObjectsArea' not in data:
+            return jsonify({'error': 'Missing required parameters: ObjectsCenter or ObjectsArea'}), 400
+
+        # Создание объекта Report из JSON данных
+        report = Report.from_json(data)
+
+        # Создание PDF отчета
+        pdf = create_pdf(report)
+
+        # Отправка PDF файл в ответе
+        return send_file(pdf, as_attachment=True, download_name='report.pdf')
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400

@@ -19,6 +19,33 @@ class Report:
         self.__centers.clear()
         self.__areas.clear()
 
+    @classmethod
+    def from_json(cls, json_data):
+        """
+        Создает объект Report из JSON данных.
+
+        :param json_data: JSON данные, содержащие ObjectsCenter и ObjectsArea
+        :return: Объект Report
+        """
+        report = cls()
+
+        # Проверяем наличие необходимых ключей в JSON данных
+        if 'ObjectsCenter' not in json_data or 'ObjectsArea' not in json_data:
+            raise ValueError("The JSON data must contain both 'ObjectsCenter' and 'ObjectsArea'.")
+
+        objects_center = json_data['ObjectsCenter']
+        objects_area = json_data['ObjectsArea']
+
+        # Проверка, что количество элементов в ObjectsCenter и ObjectsArea совпадает
+        if len(objects_center) != len(objects_area):
+            raise ValueError("The data is incorrect. "
+                             "Different number of ObjectsArea and ObjectCenter parameters.")
+
+        for center, area in zip(objects_center, objects_area):
+            report.add_contour(center, area)
+
+        return report
+
 
 class ReportManager:
     def __init__(self):
