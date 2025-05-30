@@ -31,7 +31,7 @@
     private Report reports = new Report();
     private string pdgReport;
 
-    private int processingProgress = 0;
+    private double processingProgress = 0;
     bool isDownloadBtnDisabled = true;
     bool isProcessBtnDisabled = true;
 
@@ -77,8 +77,7 @@
 
             processingProgress = 0;
             await JSRuntime.InvokeVoidAsync("startProgress", 0);
-            int step = 100 / selectedFiles.Count;
-
+        double step = 100.0 / selectedFiles.Count;
         try
         {
             foreach (IBrowserFile file in selectedFiles)
@@ -102,7 +101,8 @@
                 }
 
                 processingProgress += step;
-                await JSRuntime.InvokeVoidAsync("startProgress", processingProgress);
+
+                await JSRuntime.InvokeVoidAsync("startProgress", (int)processingProgress);
             }
         }
         catch (Exception ex)
