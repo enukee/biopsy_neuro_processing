@@ -7,11 +7,10 @@
 <link rel="stylesheet" href="app.css">
 
 <h1 class="welcome-title">Загрузите изображение</h1>
-<p class="intro-text">Загрузите изображение, и мы обработаем его для вас!</p>
 
 <div class="file-input-wrapper">
     <label class="file-input-label" for="file-input">Выберите файл</label>
-    <InputFile id="file-input" OnChange="HandleFileSelected" hidden=true accept="image/*" />
+    <InputFile id="file-input" OnChange="HandleFileSelected" hidden=true accept="image/png,image/jpg,image/jpeg" />
 </div>
 
 <button class="custom-button" @onclick="ProcessImage" style="margin-left:20px;" disabled="@isProcessBtnDisabled">
@@ -119,7 +118,7 @@
         {
             isImageInProcessing = true;
             try
-    {
+            {
                 // Обработка файла
                 var response = await DataProcessor.ProcessingImage(Http, selectedFile);
                 processedImageDataUrl = response.imageUrl;
@@ -128,10 +127,10 @@
                 double scale = scaleFieldsComponent.ScaleValue / imgHeight;
 
                 for (int i = 0; i < report.ObjectsArea.Count; i++)
-        {
+                {
                     report.ObjectsArea[i] *= scale * scale;
                     report.ObjectsArea[i] = Math.Round(report.ObjectsArea[i], 3);
-            }
+                }
             }
             catch (Exception ex)
             {
@@ -150,27 +149,27 @@
     }
 
     private async Task ObjectsNumbering()
+    {
+        if (report != null)
         {
-            if (report != null)
+            if (report.ObjectsCenter != null && report.ObjectsArea != null)
             {
-                if (report.ObjectsCenter != null && report.ObjectsArea != null)
-                {
-                    int height = 300;
-                    if (imgHeight != imgWidth)
-                        height = imgHeight * 300 / imgWidth;
+                int height = 300;
+                if (imgHeight != imgWidth)
+                    height = imgHeight * 300 / imgWidth;
 
-                    await JSRuntime.InvokeVoidAsync("clearCanvas", "procImageCanvas");
-                    for (int i = 0; i < report.ObjectsCenter.Count; i++)
-                    {
-                        int x = ((report.ObjectsCenter[i][0] * 300) / imgWidth) - 14;
-                        int y = ((report.ObjectsCenter[i][1] * height) / imgHeight) - 14;
-                        await JSRuntime.InvokeVoidAsync("drawSquare", "procImageCanvas", x, y, 15, "blue", i + 1);
-                    }
-                }
-                else
+                await JSRuntime.InvokeVoidAsync("clearCanvas", "procImageCanvas");
+                for (int i = 0; i < report.ObjectsCenter.Count; i++)
                 {
-                    Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
+                    int x = ((report.ObjectsCenter[i][0] * 300) / imgWidth) - 14;
+                    int y = ((report.ObjectsCenter[i][1] * height) / imgHeight) - 14;
+                    await JSRuntime.InvokeVoidAsync("drawSquare", "procImageCanvas", x, y, 15, "blue", i + 1);
                 }
+            }
+            else
+            {
+                Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
+            }
         }
     }
 

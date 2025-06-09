@@ -22,6 +22,8 @@
 <br>
 <ProgressBar />
 
+<DropArea LoadImage="HandleFileSelected" />
+
 @code {
     private ScaleFields scaleFieldsComponent;
 
@@ -37,7 +39,7 @@
 
     private int imgHeight;
 
-    private async Task LoadImages(List<IBrowserFile> files)
+    private async Task HandleFileSelected(List<IBrowserFile> files)
     {
         selectedFiles = files;
         imageDataUrls.Clear();
@@ -57,8 +59,8 @@
                     using (var image = System.Drawing.Image.FromStream(new MemoryStream(buffer)))
                     {
                         imgHeight = image.Height;
+                    }
                 }
-            }
             }
             catch (Exception ex)
             {
@@ -74,8 +76,8 @@
     {
         Console.WriteLine("Обработка изображения");
 
-            processingProgress = 0;
-            await JSRuntime.InvokeVoidAsync("startProgress", 0);
+        processingProgress = 0;
+        await JSRuntime.InvokeVoidAsync("startProgress", 0);
         double step = 100.0 / selectedFiles.Count;
         try
         {
@@ -92,7 +94,7 @@
                 {
 
                     for (int i = 0; i < data.ObjectsArea.Count; i++)
-                {
+                    {
                         data.ObjectsArea[i] *= scale * scale;
                         data.ObjectsArea[i] = Math.Round(data.ObjectsArea[i], 3);
                     }
@@ -108,10 +110,10 @@
         {
             Console.WriteLine($"Ошибка обработки: {ex.Message}");
         }
-            await JSRuntime.InvokeVoidAsync("startProgress", 100);
-            isDownloadBtnDisabled = false;
-            await UploadPDFReport();
-        }
+        await JSRuntime.InvokeVoidAsync("startProgress", 100);
+        isDownloadBtnDisabled = false;
+        await UploadPDFReport();
+    }
 
     private async Task UploadPDFReport()
     {
@@ -122,7 +124,7 @@
             isDownloadBtnDisabled = false;
             // Очистка кеша отчётов
             reports.Clear();
-            }
+        }
         catch (HttpRequestException ex)
         {
             Console.WriteLine($"Ошибка при выполнении запроса: {ex.Message}");

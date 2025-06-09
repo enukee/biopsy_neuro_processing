@@ -1,7 +1,4 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
-@inject IJSRuntime JSRuntime
-
-<script src="js/fileLimit.js"></script>
 
 <div class="row">
     <div class="col-12 p-0">
@@ -55,12 +52,8 @@
         dropClass = "";
         if (e.FileCount > 0)
         {
-            foreach (var file in e.GetMultipleFiles(150))
-            {
-                selectedFiles.Add(file);
-            }
+            selectedFiles.AddRange(e.GetMultipleFiles(150).ToList());
         }
-
         await LoadImage.InvokeAsync(selectedFiles);
     }
 

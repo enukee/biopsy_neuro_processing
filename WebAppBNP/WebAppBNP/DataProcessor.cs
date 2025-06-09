@@ -6,7 +6,7 @@ namespace WebAppBNP
 {
     public class DataProcessor
     {
-        public struct Data
+        public struct ReceivedData
         {
             public string imageUrl;
             public Report report;
@@ -14,9 +14,9 @@ namespace WebAppBNP
 
         private const string url = "http://127.0.0.1:5000";
 
-        public static async Task<Data> ProcessingImage(HttpClient Http, IBrowserFile file)
+        public static async Task<ReceivedData> ProcessingImage(HttpClient Http, IBrowserFile file)
         {
-            Data data = new Data();
+            ReceivedData data = new ReceivedData();
 
             // Формирование тела запроса
             var content = new MultipartFormDataContent();
