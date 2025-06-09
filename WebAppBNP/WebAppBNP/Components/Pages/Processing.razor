@@ -82,7 +82,7 @@
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        Console.WriteLine("uploading an image");
+        Console.WriteLine("Загрузка изображения");
 
         selectedFile = e.File;
         try
@@ -103,18 +103,17 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error reading file: {ex.Message}");
+            Console.WriteLine($"Ошибка чтения файла: {ex.Message}");
         }
         isProcessBtnDisabled = false;
 
         // Обновляем интерфейс, чтобы отобразить загруженное изображение
         StateHasChanged();
-        Console.WriteLine("State has changed called.");
     }
 
     private async Task ProcessImage()
     {
-        Console.WriteLine("image processing");
+        Console.WriteLine("Обработка изображения");
 
         if (selectedFile != null)
         {
@@ -167,7 +166,6 @@
                         int y = ((report.ObjectsCenter[i][1] * height) / imgHeight) - 14;
                         await JSRuntime.InvokeVoidAsync("drawSquare", "procImageCanvas", x, y, 15, "blue", i + 1);
                     }
-                    Console.WriteLine("Data loaded successfully.");
                 }
                 else
                 {

@@ -62,18 +62,17 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading file: {ex.Message}");
+                Console.WriteLine($"Ошибка чтения файла: {ex.Message}");
             }
         }
 
         isProcessBtnDisabled = false;
         StateHasChanged();
-        Console.WriteLine("State has changed called.");
     }
 
     private async Task ProcessImages()
     {
-        Console.WriteLine("image processing");
+        Console.WriteLine("Обработка изображения");
 
             processingProgress = 0;
             await JSRuntime.InvokeVoidAsync("startProgress", 0);
