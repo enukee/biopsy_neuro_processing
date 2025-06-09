@@ -1,0 +1,141 @@
+﻿@page "/series-processing"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Анализ изображений</PageTitle>
+<link rel="stylesheet" href="app.css">
+<script src="js/loadingAnimation.js"></script>
+
+<h1>Анализ серии изображений</h1>
+
+<button class="custom-button" @onclick="ProcessImages" disabled="@isProcessBtnDisabled">
+    Обработать изображения
+</button>
+
+<button class="custom-button" @onclick="DownloadProcessedImage" style="margin-left:20px;" disabled="@isDownloadBtnDisabled">
+    <img src="box-arrow-down.svg" width="20" height="20">
+</button>
+<br>
+<ScaleFields @ref="scaleFieldsComponent" />
+
+<br>
+<ProgressBar />
+
+<DropArea LoadImage="HandleFileSelected" />
+
+@code {
+    private ScaleFields scaleFieldsComponent;
+
+    private List<IBrowserFile> selectedFiles = new List<IBrowserFile>();
+    private List<string> imageDataUrls = new List<string>();
+    private List<string> processedImageDataUrls = new List<string>();
+    private Report reports = new Report();
+    private string pdgReport;
+
+    private double processingProgress = 0;
+    bool isDownloadBtnDisabled = true;
+    bool isProcessBtnDisabled = true;
+
+    private int imgHeight;
+
+    private async Task HandleFileSelected(List<IBrowserFile> files)
+    {
+        selectedFiles = files;
+        imageDataUrls.Clear();
+
+        foreach (var file in selectedFiles)
+        {
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.OpenReadStream(104857600).CopyToAsync(memoryStream);
+                    var buffer = memoryStream.ToArray();
+                    var imageDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+                    imageDataUrls.Add(imageDataUrl);
+
+                    // Определяем размеры изображения
+                    using (var image = System.Drawing.Image.FromStream(new MemoryStream(buffer)))
+                    {
+                        imgHeight = image.Height;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка чтения файла: {ex.Message}");
+            }
+        }
+
+        isProcessBtnDisabled = false;
+        StateHasChanged();
+    }
+
+    private async Task ProcessImages()
+    {
+        Console.WriteLine("Обработка изображения");
+
+        processingProgress = 0;
+        await JSRuntime.InvokeVoidAsync("startProgress", 0);
+        double step = 100.0 / selectedFiles.Count;
+        try
+        {
+            foreach (IBrowserFile file in selectedFiles)
+            {
+                // Обработка файла
+                var response = await DataProcessor.ProcessingImage(Http, file);
+
+                processedImageDataUrls.Add(response.imageUrl);
+
+                var data = response.report;
+                double scale = scaleFieldsComponent.ScaleValue / imgHeight;
+                if (data.ObjectsCenter != null && data.ObjectsArea != null)
+                {
+
+                    for (int i = 0; i < data.ObjectsArea.Count; i++)
+                    {
+                        data.ObjectsArea[i] *= scale * scale;
+                        data.ObjectsArea[i] = Math.Round(data.ObjectsArea[i], 3);
+                    }
+                    reports.AddReport(data);
+                }
+
+                processingProgress += step;
+
+                await JSRuntime.InvokeVoidAsync("startProgress", (int)processingProgress);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка обработки: {ex.Message}");
+        }
+        await JSRuntime.InvokeVoidAsync("startProgress", 100);
+        isDownloadBtnDisabled = false;
+        await UploadPDFReport();
+    }
+
+    private async Task UploadPDFReport()
+    {
+        try
+        {
+            pdgReport = await DataProcessor.UploadPDFReport(Http, reports);
+
+            isDownloadBtnDisabled = false;
+            // Очистка кеша отчётов
+            reports.Clear();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка при выполнении запроса: {ex.Message}");
+        }
+    }
+
+    private async Task DownloadProcessedImage()
+    {
+        if (!isDownloadBtnDisabled && !string.IsNullOrEmpty(pdgReport))
+        {
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", "report.pdf", pdgReport);
+        }
+    }
+}

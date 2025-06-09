@@ -1,0 +1,21 @@
+﻿@page "/"
+
+<PageTitle>Главная</PageTitle>
+<link rel="stylesheet" href="app.css">
+
+<h1>Нейросетевая обработка снимков биопсии почек</h1>
+<div class="container">
+    <div class="text">
+        <p>Нейросеть выделяет на снимке клубочки почек и определяет их площадь.</p>
+        <h5>Требования к обрабатываемым изображениям:</h5>
+        <ol>
+            <li>Изображения имеют увеличение x10 или x20(изображения с x20 будут преобразованы к x10);</li>
+            <li>Файлы изображений имеют размер не более 6Мб.</li>
+        </ol>
+    </div>
+    <div class="image">
+        <img src="processing_example.gif" width="300" alt="Загруженное изображение" />
+    </div>
+</div>
+
+<a href="processing" class="custom-button">Тест</a>

@@ -1,0 +1,19 @@
+﻿@using System.ComponentModel.DataAnnotations
+
+<table style="border-collapse: collapse; border: none;">
+    <tr>
+        <td style="border: none; padding: 0; text-align: left;">
+            <label>Введите высоту изображения в мкм:</label>
+        </td>
+    </tr>
+    <tr>
+        <td style="border: none; padding: 0; text-align: left;">
+            <input type="number" @bind="ScaleValue" @bind:event="oninput" min="0.2" step="0.01" />
+            <span>мкм</span>
+        </td>
+    </tr>
+</table>
+
+@code {
+    public double ScaleValue { get; set; }
+}

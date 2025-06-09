@@ -1,0 +1,183 @@
+﻿@page "/processing"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Тест</PageTitle>
+<link rel="stylesheet" href="app.css">
+
+<h1 class="welcome-title">Загрузите изображение</h1>
+
+<div class="file-input-wrapper">
+    <label class="file-input-label" for="file-input">Выберите файл</label>
+    <InputFile id="file-input" OnChange="HandleFileSelected" hidden=true accept="image/png,image/jpg,image/jpeg" />
+</div>
+
+<button class="custom-button" @onclick="ProcessImage" style="margin-left:20px;" disabled="@isProcessBtnDisabled">
+    Обработать изображение</button>
+
+<button class="custom-button" @onclick="DownloadProcessedImage" style="margin-left:20px;" disabled="@isDownloadBtnDisabled">
+    <img src="box-arrow-down.svg" width="20" height="20">
+</button>
+<br>
+<ScaleFields @ref="scaleFieldsComponent" />
+
+<br>
+@if (imageDataUrl != null)
+{
+    <img src="@imageDataUrl" width="300" alt="Загруженное изображение" style="padding: 1em;" />
+}
+
+@if (processedImageDataUrl != null)
+{
+    <div style="position: relative; display: inline-block;">
+        <img src="@processedImageDataUrl" width="300" alt="Обработанное изображение" style="padding: 1em;" />
+        <canvas id="procImageCanvas" width="300" height="300" style="position: absolute; top: 1em; left: 1em;"></canvas>
+    </div>
+
+    <br>
+    <h3>Отчёт</h3>
+    @if (report == null)
+    {
+        <p>Отчёт не получен</p>
+    }
+
+    else
+    {
+        <ol>
+            @if (report.ObjectsArea != null)
+            {
+                @for (int i = 0; i < report.ObjectsArea.Count; i++)
+                {
+                    <li>Площадь: @report.ObjectsArea[i] мкм<sup>2</sup>; Местоположение: @report.ObjectsCenter[i][0],@report.ObjectsCenter[i][1]</li>
+                }
+            }
+        </ol>
+    }
+}
+
+@if (isImageInProcessing)
+{
+    <br>
+    <LoadingComponent />
+}
+
+<script src="js/loadingAnimation.js"></script>
+
+@code {
+    private ScaleFields scaleFieldsComponent;
+
+    private IBrowserFile selectedFile;
+    private string imageDataUrl;
+    private string processedImageDataUrl;
+    private bool isProcessBtnDisabled = true;
+    private bool isDownloadBtnDisabled = true;
+
+    private bool isImageInProcessing = false;
+
+    private Report? report;
+
+    int imgWidth, imgHeight;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        Console.WriteLine("Загрузка изображения");
+
+        selectedFile = e.File;
+        try
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                await selectedFile.OpenReadStream(6291456).CopyToAsync(memoryStream);
+                var buffer = memoryStream.ToArray();
+                imageDataUrl = $"data:{selectedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+
+                // Определяем размеры изображения
+                using (var image = System.Drawing.Image.FromStream(new MemoryStream(buffer)))
+                {
+                    imgWidth = image.Width;
+                    imgHeight = image.Height;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка чтения файла: {ex.Message}");
+        }
+        isProcessBtnDisabled = false;
+
+        // Обновляем интерфейс, чтобы отобразить загруженное изображение
+        StateHasChanged();
+    }
+
+    private async Task ProcessImage()
+    {
+        Console.WriteLine("Обработка изображения");
+
+        if (selectedFile != null)
+        {
+            isImageInProcessing = true;
+            try
+            {
+                // Обработка файла
+                var response = await DataProcessor.ProcessingImage(Http, selectedFile);
+                processedImageDataUrl = response.imageUrl;
+                report = response.report;
+
+                double scale = scaleFieldsComponent.ScaleValue / imgHeight;
+
+                for (int i = 0; i < report.ObjectsArea.Count; i++)
+                {
+                    report.ObjectsArea[i] *= scale * scale;
+                    report.ObjectsArea[i] = Math.Round(report.ObjectsArea[i], 3);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка обработки: {ex.Message}");
+            }
+
+            isImageInProcessing = false;
+            isDownloadBtnDisabled = false;
+
+            // Обновление интерфейса
+            StateHasChanged();
+
+            // Нумерация объектов на изображении
+            await ObjectsNumbering();
+        }
+    }
+
+    private async Task ObjectsNumbering()
+    {
+        if (report != null)
+        {
+            if (report.ObjectsCenter != null && report.ObjectsArea != null)
+            {
+                int height = 300;
+                if (imgHeight != imgWidth)
+                    height = imgHeight * 300 / imgWidth;
+
+                await JSRuntime.InvokeVoidAsync("clearCanvas", "procImageCanvas");
+                for (int i = 0; i < report.ObjectsCenter.Count; i++)
+                {
+                    int x = ((report.ObjectsCenter[i][0] * 300) / imgWidth) - 14;
+                    int y = ((report.ObjectsCenter[i][1] * height) / imgHeight) - 14;
+                    await JSRuntime.InvokeVoidAsync("drawSquare", "procImageCanvas", x, y, 15, "blue", i + 1);
+                }
+            }
+            else
+            {
+                Console.WriteLine("ObjectsCenter or ObjectsArea is null.");
+            }
+        }
+    }
+
+    private async Task DownloadProcessedImage()
+    {
+        if (!string.IsNullOrEmpty(processedImageDataUrl))
+        {
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", "processed_image.jpg", processedImageDataUrl);
+        }
+    }
+}
